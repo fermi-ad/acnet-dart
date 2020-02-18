@@ -19,7 +19,7 @@ int _charToIndex(String c) {
 // Converts a string into a RAD50 value. The RAD50 character set is limited
 // so characters not in the set are mapped to the 'space' character.
 
-int to_rad50(String s) {
+int toRad50(String s) {
   var v1 = 0;
   var v2 = 0;
 
