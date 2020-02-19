@@ -1,11 +1,20 @@
+/// Represents an ACNET status.
 class Status {
   final int _val;
 
+  /// Creates a new, ACNET status value. Both the facility and error code
+  /// need to be specified.
   const Status({facility: int, errCode: int}) :
         _val = errCode * 256 + facility;
 
+  /// Alternate constructor. This constructor is intended for code pulling
+  /// status codes from network packets. For normal code -- and if one of the
+  /// pre-defined error codes isn't sufficient -- the default constructor
+  /// should be used.
   const Status.fromRaw(int v) : _val = v;
 
+  /// Returns the raw integer value of the status. Should only be used by
+  /// code writing the status to a network buffer.
   int get raw => _val;
 
   bool get isGood => _val >= 0;

@@ -1,6 +1,7 @@
+/// Communication library allowing Dart applications to be ACNET
+/// clients. This is a low-level communications library which is
+/// used to build higher-level ACNET service libraries.
 library acnet;
-
-/// Manages a connection to the ACNET control system.
 
 export 'src/status.dart';
 export 'src/connection.dart';

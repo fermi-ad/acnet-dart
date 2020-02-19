@@ -29,16 +29,13 @@ class Connection {
   /// Allows an application to query the current state of the ACNET connection.
   /// This state is volatile in that, right after reading the state is
   /// "Connected", the ACNET connection could end.
-
   State get state => this._currentState;
 
   /// Returns a Future<State> so applications can block and be notified when
   /// the state of the connection has changed.
-
   Future<State> get nextState => this._stateEvent.future;
 
   /// Returns the ACNET handle associated with the connection.
-
   Future<String> get handle async {
     final ctxt = await this._ctxt;
 
@@ -165,7 +162,6 @@ class Connection {
   }
 
   /// Helper method to convert an ACNET node name into an address.
-
   Future<int> getNodeAddress(String name) async {
     final _Context ctxt = await this._ctxt;
     final pkt = Uint8List(16);
@@ -195,7 +191,6 @@ class Connection {
   }
 
   /// Helper method to convert an ACNET trunk/node into a name.
-
   Future<String> getNodeName(int addr) async {
     final _Context ctxt = await this._ctxt;
     final pkt = Uint8List(14);
@@ -225,7 +220,6 @@ class Connection {
   }
 
   /// Helper method to get the local node name.
-
   Future<String> getLocalNode() async {
     final _Context ctxt = await this._ctxt;
     final pkt = Uint8List(12);
