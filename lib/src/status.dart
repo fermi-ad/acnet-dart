@@ -17,9 +17,24 @@ class Status {
   /// code writing the status to a network buffer.
   int get raw => _val;
 
-  bool get isGood => _val >= 0;
-  bool get isBad => _val < 0;
+  /// Returns the facility portion of the status.
+  int get facility => _val & 0xff;
 
+  /// Returns the error code portion of the status.
+  int get errCode => _val ~/ 256;
+
+  /// Returns true if the status represents "success".
+  bool get isSuccess => this.errCode == 0;
+
+  /// Returns true if the status represents "success", but contains additional
+  /// information (i.e. could mean data was returned but it's "stale".)
+  bool get isGood => this.errCode > 0;
+
+  /// Returns true is the status is bad. A bad status will shut down an ACNET
+  /// request.
+  bool get isBad => this.errCode < 0;
+
+  /// Formats a status value into the canonical, Fermi format.
   String toString() { return "[${this._val & 255} ${this._val ~/ 256}]"; }
 
   int compareTo(Status o) { return this._val - o._val; }
