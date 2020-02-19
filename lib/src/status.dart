@@ -28,7 +28,7 @@ class Status {
 
   /// Returns true if the status represents "success", but contains additional
   /// information (i.e. could mean data was returned but it's "stale".)
-  bool get isGood => this.errCode > 0;
+  bool get isGood => this.errCode >= 0;
 
   /// Returns true is the status is bad. A bad status will shut down an ACNET
   /// request.
