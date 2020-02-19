@@ -37,7 +37,14 @@ class Status {
   /// Formats a status value into the canonical, Fermi format.
   String toString() { return "[${this._val & 255} ${this._val ~/ 256}]"; }
 
-  int compareTo(Status o) { return this._val - o._val; }
+  /// Defines an order to ACNET status values. Statuses are ordered first
+  /// by facility and then by error code.
+  int compareTo(Status o) {
+    final fThis = this.facility;
+    final fO = o.facility;
+
+    return fThis == fO ? this.errCode - o.errCode : fThis - fO;
+  }
 }
 
 // Pre-defined ACNET status codes as of Feb 18, 2020.
