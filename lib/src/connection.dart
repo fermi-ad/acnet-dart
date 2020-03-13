@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
+
 import 'rad50.dart';
 import 'status.dart';
 
@@ -33,6 +34,8 @@ class Reply<T> {
   const Reply(this.sender, this.status, this.message);
 
   String toString() => "Reply(${this.sender}, ${this.status}, ${this.message})";
+
+  Reply<R> map<R>(R f(T)) => Reply(this.sender, this.status, f(this.message));
 }
 
 typedef ReplyHandler(Reply<List<int>> reply);
@@ -44,8 +47,8 @@ class Connection {
   Future<_Context> _ctxt;
   List<Completer<List<int>>> _requests = [];
   State _currentState = State.Disconnected;
+  StreamController<State> _stateStream = StreamController.broadcast();
   StreamSubscription<dynamic> _sub; // ignore: cancel_subscriptions
-  Completer<State> _stateEvent = Completer();
   Map<int, ReplyHandler> _rpyMap = {};
 
   // 'nack_disconnect' is a packet that is returned when we lose connection
@@ -60,9 +63,9 @@ class Connection {
   /// "Connected", the ACNET connection could end.
   State get state => this._currentState;
 
-  /// Returns a Future<State> so applications can block and be notified when
+  /// Returns a Stream<State> so applications can subscribe and be notified when
   /// the state of the connection has changed.
-  Future<State> get nextState => this._stateEvent.future;
+  Stream<State> get stateStream => this._stateStream.stream;
 
   /// Returns the ACNET handle associated with the connection.
   Future<String> get handle async {
@@ -77,10 +80,7 @@ class Connection {
   // they'll block.
 
   void _postNewState(State s) {
-    final tmp = this._stateEvent;
-
-    this._stateEvent = Completer();
-    tmp.complete(s);
+    this._stateStream.add(s);
   }
 
   void _reset(Duration d) {
@@ -188,7 +188,7 @@ class Connection {
         // request ID. Use the request ID to look-up the callback associated
         // with it.
 
-        final bd = ByteData.view((pkt as Uint8List).buffer, 4);
+        final bd = ByteData.view(Uint8List.fromList(pkt).buffer, 2);
         final status = Status.fromRaw(bd.getInt16(2, Endian.little));
         final tn = bd.getUint16(4);
         final reqId = bd.getUint16(14, Endian.little);
@@ -204,7 +204,7 @@ class Connection {
 
           if (bd.getUint16(0, Endian.little) == 4)
             this._rpyMap.remove(reqId);
-          entry(Reply(tn, status, Uint8List.view((pkt as Uint8List).buffer, 22)));
+          entry(Reply(tn, status, Uint8List.view(bd.buffer, 20)));
         } else
           print("bad request ID: $reqId");
       } else
@@ -340,10 +340,10 @@ class Connection {
     }
   }
 
-  Future<Reply<List<int>>> rpc({String task, List<int> message, int timeout = 1000}) {
+  Future<Reply<List<int>>> rpc({ String task, List<int> data, int timeout = 1000 }) {
     return this._parseAddress(task)
         .then((p) async {
-          final buf = Uint8List(24 + message.length);
+          final buf = Uint8List(24 + data.length);
           final ctxt = await this._ctxt;
 
           {
@@ -356,7 +356,7 @@ class Connection {
             bd.setUint16(18, 0);
             bd.setUint32(20, timeout);
           }
-          buf.setAll(24, message);
+          buf.setAll(24, data);
 
           final ack = await this._xact(ctxt._socket, buf);
 

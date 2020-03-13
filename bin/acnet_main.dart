@@ -1,8 +1,5 @@
-import 'dart:typed_data';
-
 import '../lib/acnet.dart';
-
-final Uint8List pingReq = Uint8List.fromList([0, 0]);
+import '../lib/level2.dart';
 
 void main() async {
   final c = Connection();
@@ -16,9 +13,18 @@ void main() async {
 
   print("CLX73: tn = $tn, nm = $nm");
 
-  final rpy = await c.rpc(task: "ACNET@CLX39", message: pingReq);
+  final node = "CLX39";
+  final answering = await c.ping(node: node);
 
-  print("reply: Reply(sender: ${await c.getNodeName(rpy.sender)}, "
-        "status: ${rpy.status}, "
-        "data: ${rpy.message})");
+  if (answering) {
+    final v = await c.version(node: node);
+
+    print("${v[0]}, ${v[1]}, ${v[2]}");
+  } else
+    print("$node did not answer.");
+
+  final tasks = await c.getTasks(node: node);
+
+  for (var ii in tasks)
+    print(ii.toString());
 }
