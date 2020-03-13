@@ -7,7 +7,7 @@ import 'status.dart';
 
 /// The possible states of the ACNET connection. These are retrieved using
 /// the `Connection.state` and `Connection.nextState` properties.
-enum State { Disconnected, Connected }
+enum AcnetState { Disconnected, Connected }
 
 class _Context {
   int _handle;
@@ -46,8 +46,8 @@ typedef ReplyHandler(Reply<List<int>> reply);
 class Connection {
   Future<_Context> _ctxt;
   List<Completer<List<int>>> _requests = [];
-  State _currentState = State.Disconnected;
-  StreamController<State> _stateStream = StreamController.broadcast();
+  AcnetState _currentState = AcnetState.Disconnected;
+  StreamController<AcnetState> _stateStream = StreamController.broadcast();
   StreamSubscription<dynamic> _sub; // ignore: cancel_subscriptions
   Map<int, ReplyHandler> _rpyMap = {};
 
@@ -61,11 +61,11 @@ class Connection {
   /// Allows an application to query the current state of the ACNET connection.
   /// This state is volatile in that, right after reading the state is
   /// "Connected", the ACNET connection could end.
-  State get state => this._currentState;
+  AcnetState get state => this._currentState;
 
   /// Returns a Stream<State> so applications can subscribe and be notified when
   /// the state of the connection has changed.
-  Stream<State> get stateStream => this._stateStream.stream;
+  Stream<AcnetState> get stateStream => this._stateStream.stream;
 
   /// Returns the ACNET handle associated with the connection.
   Future<String> get handle async {
@@ -79,7 +79,7 @@ class Connection {
   // unresolved Future. This way, if a task immediate awaits on `nextState`,
   // they'll block.
 
-  void _postNewState(State s) {
+  void _postNewState(AcnetState s) {
     this._stateStream.add(s);
   }
 
@@ -130,13 +130,13 @@ class Connection {
                         // Before updating the context, we notify listeners of
                         // our state events that we just connected.
 
-                        this._postNewState(State.Connected);
+                        this._postNewState(AcnetState.Connected);
                         return _Context(h, s);
                       });
                 }));
 
     this._requests = [];
-    this._postNewState(State.Disconnected);
+    this._postNewState(AcnetState.Disconnected);
   }
 
   Connection() {
