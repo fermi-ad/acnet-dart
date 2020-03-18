@@ -99,42 +99,41 @@ class Connection {
     // restarts (when trying to reconnect) we wait 5 seconds.
 
     this._ctxt =
-        Future.delayed(d, () =>
+        Future.delayed(d, () async {
+          while (true) {
+            try {
+              final ws = await WebSocket.connect(wsUrl.toString(),
+                  protocols: ['acnet-client']);
 
-            // `WebSocket.connect` returns a Future that returns a WebSocket.
-            // We don't want anyone to use the WebSocket until we register a
-            // handle with ACNET, so we add a `then` chain to do further
-            // processing.
+              _sub = ws.listen(this._onData, onError: this._onError,
+                  onDone: this._onDone);
 
-            WebSocket.connect(wsUrl.toString(), protocols: ['acnet-client'])
-                .then((s) {
+              const reqConPkt = const [0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0];
 
-                  // 's' is the Websocket. We create a subscriber to it so
-                  // we'll get notified with its events.
+              // Send the CONNECT command to ACNET. The `_xact` method
+              // returns a Future with the ACK status from ACNET. We
+              // feed this result into a `then` which builds the _Context
+              // that resolves the outermost Future.
 
-                  this._sub = s.listen(this._onData, onError: this._onError,
-                                       onDone: this._onDone);
+              final List<int> ack = await _xact(ws, reqConPkt);
+              final bd = ByteData.view((ack as Uint8List).buffer, 4);
+              final h = bd.getUint32(5);
 
-                  const reqConPkt = [0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                    0, 0, 0, 0];
+              // Before updating the context, we notify listeners of
+              // our state events that we just connected.
 
-                  // Send the CONNECT command to ACNET. The `_xact` method
-                  // returns a Future with the ACK status from ACNET. We
-                  // feed this result into a `then` which builds the _Context
-                  // that resolves the outermost Future.
-
-                  return this._xact(s, reqConPkt)
-                      .then((List<int> ack) {
-                        final bd = ByteData.view((ack as Uint8List).buffer, 4);
-                        final h = bd.getUint32(5);
-
-                        // Before updating the context, we notify listeners of
-                        // our state events that we just connected.
-
-                        this._postNewState(AcnetState.Connected);
-                        return _Context(h, s);
-                      });
-                }));
+              _postNewState(AcnetState.Connected);
+              return _Context(h, ws);
+            }
+            catch (error) {
+              print("exception opening web socket: $error");
+              _postNewState(AcnetState.Disconnected);
+              await Future.delayed(Duration(seconds: 5));
+              print("retrying connection to ACNET");
+            }
+          }
+        });
 
     this._requests = [];
     this._postNewState(AcnetState.Disconnected);
