@@ -86,7 +86,7 @@ class Connection {
 
   void _reset(Duration d) {
     final Uri wsUrl =
-      Uri(scheme: "wss", host: "www-bd.fnal.gov", port:443,
+      Uri(scheme: "wss", host: "www-bd.fnal.gov", port: 443,
           path:"acnet-ws-test");
 
     // Free up resources to a subscription that may still exist.
@@ -103,7 +103,8 @@ class Connection {
           while (true) {
             try {
               final ws = await WebSocket.connect(wsUrl.toString(),
-                  protocols: ['acnet-client']);
+                  protocols: ['acnet-client'],
+                  compression: CompressionOptions(enabled: false));
 
               _sub = ws.listen(this._onData, onError: this._onError,
                   onDone: this._onDone);
