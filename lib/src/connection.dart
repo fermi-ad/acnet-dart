@@ -46,7 +46,7 @@ typedef ReplyHandler(Reply<List<int>> reply);
 class Connection {
   Future<_Context> _ctxt;
   List<Completer<List<int>>> _requests = [];
-  AcnetState _currentState = AcnetState.Disconnected;
+  AcnetState _currentState = AcnetState.Connected;
   StreamController<AcnetState> _stateStream = StreamController.broadcast();
   StreamSubscription<dynamic> _sub; // ignore: cancel_subscriptions
   Map<int, ReplyHandler> _rpyMap = {};
@@ -80,6 +80,7 @@ class Connection {
   // they'll block.
 
   void _postNewState(AcnetState s) {
+    _currentState = s;
     this._stateStream.add(s);
   }
 
