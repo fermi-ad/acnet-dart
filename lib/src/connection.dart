@@ -128,10 +128,8 @@ class Connection {
               return _Context(h, ws);
             }
             catch (error) {
-              print("exception opening web socket: $error");
               _postNewState(AcnetState.Disconnected);
               await Future.delayed(Duration(seconds: 5));
-              print("retrying connection to ACNET");
             }
           }
         });
