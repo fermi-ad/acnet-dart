@@ -141,7 +141,7 @@ class Connection {
   }
 
   Connection() {
-    this._reset(Duration());
+    this._reset(Duration(seconds: 0));
   }
 
   void _onDone() {
