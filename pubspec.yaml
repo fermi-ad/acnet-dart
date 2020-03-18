@@ -1,6 +1,9 @@
-name: acnet_test
-version: 0.0.1
-description: A sample command-line application
+name: acnet
+version: 0.1.0
+description: ACNET communication library
+publish_to: none
+environment:
+  sdk: '>=2.6.0 <3.0.0'
 dependencies:
 
 dev_dependencies:
