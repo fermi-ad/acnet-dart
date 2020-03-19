@@ -37,9 +37,10 @@ official repo!**
 ## Merging Changes
 
 Once you have completed, tested, and debugged your changes,
-it's time to incorporate them into the official repo. We
-do this by merging the `devel` branch into the `v0.x` branch.
-So switch back to the `v0.x` branch:
+it's time to incorporate them into the official repo. First,
+make sure that you've updated the version number in
+`pubspec.yaml`. Next, merge the `devel` branch into the `v0.x`
+branch. We start by switching back to the `v0.x` branch:
 
     $ git checkout v0.x
 
