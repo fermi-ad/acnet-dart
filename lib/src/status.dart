@@ -4,8 +4,7 @@ class Status {
 
   /// Creates a new, ACNET status value. Both the facility and error code
   /// need to be specified.
-  const Status({facility: int, errCode: int}) :
-        _val = errCode * 256 + facility;
+  const Status({facility: int, errCode: int}) : _val = errCode * 256 + facility;
 
   /// Alternate constructor. This constructor is intended for code pulling
   /// status codes from network packets. For normal code -- and if one of the
@@ -35,7 +34,9 @@ class Status {
   bool get isBad => this.errCode < 0;
 
   /// Formats a status value into the canonical, Fermi format.
-  String toString() { return "[${this._val & 255} ${this._val ~/ 256}]"; }
+  String toString() {
+    return "[${this._val & 255} ${this._val ~/ 256}]";
+  }
 
   /// Defines an order to ACNET status values. Statuses are ordered first
   /// by facility and then by error code.
