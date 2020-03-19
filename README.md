@@ -1,5 +1,4 @@
-Development Model
-=================
+# Development Model
 
 When working on this project, the following method of
 development should be followed to prevent dependent
@@ -7,8 +6,7 @@ projects from breaking. Of course, over time we may
 adjust these steps to optimize the process or remove
 redundancies.
 
-Obtaining the Source
---------------------
+## Obtaining the Source
 
 The official repository is currently on Fermilab's Redmine
 installation. To check it out:
@@ -36,8 +34,7 @@ On this branch, as many intermediate commits can be made,
 as necessary. **Never push the `devel` branch back to the
 official repo!**
 
-Merging Your Changes
---------------------
+## Merging Changes
 
 Once you have completed, tested, and debugged your changes,
 it's time to incorporate them into the official repo. We
