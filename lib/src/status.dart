@@ -4,24 +4,24 @@ class Status {
 
   /// Creates a new, ACNET status value. Both the facility and error code
   /// need to be specified.
-  const Status({facility: int, errCode: int}) :
-        _val = errCode * 256 + facility;
+  const Status({facility: int, errCode: int})
+      : this._val = errCode * 256 + facility;
 
   /// Alternate constructor. This constructor is intended for code pulling
   /// status codes from network packets. For normal code -- and if one of the
   /// pre-defined error codes isn't sufficient -- the default constructor
   /// should be used.
-  const Status.fromRaw(int v) : _val = v;
+  const Status.fromRaw(int v) : this._val = v;
 
   /// Returns the raw integer value of the status. Should only be used by
   /// code writing the status to a network buffer.
-  int get raw => _val;
+  int get raw => this._val;
 
   /// Returns the facility portion of the status.
-  int get facility => _val & 0xff;
+  int get facility => this._val & 0xff;
 
   /// Returns the error code portion of the status.
-  int get errCode => _val ~/ 256;
+  int get errCode => this._val ~/ 256;
 
   /// Returns true if the status represents "success".
   bool get isSuccess => this.errCode == 0;
@@ -35,7 +35,9 @@ class Status {
   bool get isBad => this.errCode < 0;
 
   /// Formats a status value into the canonical, Fermi format.
-  String toString() { return "[${this._val & 255} ${this._val ~/ 256}]"; }
+  String toString() {
+    return "[${this._val & 255} ${this._val ~/ 256}]";
+  }
 
   /// Defines an order to ACNET status values. Statuses are ordered first
   /// by facility and then by error code.

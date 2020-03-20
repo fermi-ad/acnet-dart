@@ -16,48 +16,63 @@ class TaskInfo {
   @override
   String toString() {
     return "task info: { id: ${this.taskId}, "
-           "type: ${this.type == TaskType.Client ? "client" : "service"}, "
-           "handle: ${this.handle}, pid: ${this.pid} }";
+        "type: ${this.type == TaskType.Client ? "client" : "service"}, "
+        "handle: ${this.handle}, pid: ${this.pid} }";
   }
 }
 
+/// Adds methods to the [Connection] class to provide "Level-II" diagnostics.
+/// These are methods that retrieve internal information from an ACNET node
+/// or perform diagnostic functions (like "ping"ing an ACNET node.) Normal
+/// ACNET applications don't require these utilities.
+
 extension LevelII on Connection {
+  /// Pings the specified ACNET node. If this method returns [true], the remote
+  /// node responded.
 
-  /// Pings the specified ACNET node.
-
-  Future<bool> ping({ String node }) async {
-    final result = await this.rpc(task: "ACNET@" + node,
-                                  data: Uint8List.fromList(const [0, 0]),
-                                  timeout: 100);
+  Future<bool> ping({String node}) async {
+    final result = await this.requestReply(
+        task: "ACNET@" + node,
+        data: Uint8List.fromList(const [0, 0]),
+        timeout: 100);
 
     return result.status.isGood && result.message.length == 2;
   }
 
-  /// Queries the version of the specified ACNET node. The return value is a
-  /// list of 3 strings.
+  /// Queries the versions associated with the specified ACNET node. The return
+  /// value is a list of 3 strings representing the three version numbers used
+  /// to identify aspect of ACNET. The first version represents the version of
+  /// the network layout. ACNET nodes with the same, first version should be
+  /// able to communicate. The second version is associated with internals of
+  /// the local ACNET process/library. The third version represent the local
+  /// API that clients use to communicate with their ACNET process/library.
 
-  Future<List<String>> version({ String node }) async {
-    final result = await this.rpc(task: "ACNET@" + node,
-                                  data: Uint8List.fromList(const [3, 0]),
-                                  timeout: 100);
+  Future<List<String>> version({String node}) async {
+    final result = await this.requestReply(
+        task: "ACNET@" + node,
+        data: Uint8List.fromList(const [3, 0]),
+        timeout: 100);
 
     if (result.status.isGood) {
       final v = Uint8List.fromList(result.message);
       final bd = ByteData.view(v.buffer);
 
-      return [bd.getUint16(0, Endian.little),
-              bd.getUint16(2, Endian.little),
-              bd.getUint16(4, Endian.little)]
-          .map((v) => "${v ~/ 256}.${v % 256}")
-          .toList();
+      return [
+        bd.getUint16(0, Endian.little),
+        bd.getUint16(2, Endian.little),
+        bd.getUint16(4, Endian.little)
+      ].map((v) => "${v ~/ 256}.${v % 256}").toList();
     } else
       throw result.status;
   }
 
-  Future<List<TaskInfo>> getTasks({ String node }) async {
-    final result = await this.rpc(task: "ACNET@" + node,
-                                  data: Uint8List.fromList(const [4, 3]),
-                                  timeout: 500);
+  /// Retrieves a snapshot of the tasks connected to an ACNET node.
+
+  Future<List<TaskInfo>> getTasks({String node}) async {
+    final result = await this.requestReply(
+        task: "ACNET@" + node,
+        data: Uint8List.fromList(const [4, 3]),
+        timeout: 500);
 
     if (result.status.isGood) {
       final v = Uint8List.fromList(result.message);
@@ -66,15 +81,14 @@ extension LevelII on Connection {
       var l = <TaskInfo>[];
 
       if (bd.buffer.lengthInBytes >= 2 + total * 11) {
-        print(
-            "pkt size: ${bd.buffer.lengthInBytes} bytes, total tasks: $total");
-
         for (var ii = 0; ii < total; ++ii) {
           final offset = 2 + ii * 11;
 
-          l.add(TaskInfo(bd.getUint16(offset, Endian.little),
-              (bd.getUint8(offset + 2) & 1) != 0 ? TaskType.Server : TaskType
-                  .Client,
+          l.add(TaskInfo(
+              bd.getUint16(offset, Endian.little),
+              (bd.getUint8(offset + 2) & 1) != 0
+                  ? TaskType.Server
+                  : TaskType.Client,
               toString(bd.getUint32(offset + 3, Endian.little)),
               bd.getUint32(offset + 7, Endian.little)));
         }
@@ -84,5 +98,4 @@ extension LevelII on Connection {
     } else
       throw result.status;
   }
-
 }

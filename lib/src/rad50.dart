@@ -11,8 +11,7 @@ int _charToIndex(String c) {
     return 27;
   else if (c == "\.")
     return 28;
-  else if (c == "%")
-    return 29;
+  else if (c == "%") return 29;
   return 0;
 }
 
