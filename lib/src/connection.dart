@@ -242,6 +242,21 @@ class Connection {
     return c.future;
   }
 
+  Future _cancel(int reqId) async {
+    final _Context ctxt = await _ctxt;
+    final pkt = Uint8List(14);
+
+    {
+      final bd = ByteData.view(pkt.buffer);
+
+      bd.setUint32(0, 0x00010008);
+      bd.setUint32(4, ctxt._handle);
+      bd.setUint16(12, reqId);
+    }
+
+    _xact(ctxt._socket, pkt);
+  }
+
   /// Converts an ACNET node name into an address by querying the node table
   /// of the local `acnetd` instance.
   Future<int> getNodeAddress(String name) async {
