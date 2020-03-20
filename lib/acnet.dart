@@ -3,5 +3,7 @@
 /// used to build higher-level ACNET service libraries.
 library acnet;
 
+export 'src/protocol.dart';
+export 'src/rawprotocol.dart';
 export 'src/status.dart';
 export 'src/connection.dart';

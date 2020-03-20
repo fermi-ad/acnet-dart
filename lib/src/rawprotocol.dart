@@ -1,6 +1,6 @@
 import 'protocol.dart';
 
-/// The `RawCodec` is used to send binary packets to and from ACNET. Binary
+/// The `RawProtocol` is used to send binary packets to and from ACNET. Binary
 /// packets implement the `List<int> interface. It is usually better to create
 /// a Codec that translates to and from a Dart data type, but this is here for
 /// occasionally used protocols in ACNET that are binary.
