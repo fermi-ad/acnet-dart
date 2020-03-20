@@ -377,7 +377,7 @@ class Connection {
   /// as to whether an ACNET timeout occurred or whether a local timeout
   /// expired and the Futures were canceled. Letting ACNET do the timeout
   /// allows resources to be properly cleaned up.
-  Future<Reply<List<int>>> rpc(
+  Future<Reply<List<int>>> requestReply(
       {String task, List<int> data, int timeout = 1000}) async {
     try {
       final p = await _parseAddress(task);

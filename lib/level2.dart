@@ -31,7 +31,7 @@ extension LevelII on Connection {
   /// node responded.
 
   Future<bool> ping({String node}) async {
-    final result = await this.rpc(
+    final result = await this.requestReply(
         task: "ACNET@" + node,
         data: Uint8List.fromList(const [0, 0]),
         timeout: 100);
@@ -48,7 +48,7 @@ extension LevelII on Connection {
   /// API that clients use to communicate with their ACNET process/library.
 
   Future<List<String>> version({String node}) async {
-    final result = await this.rpc(
+    final result = await this.requestReply(
         task: "ACNET@" + node,
         data: Uint8List.fromList(const [3, 0]),
         timeout: 100);
@@ -69,7 +69,7 @@ extension LevelII on Connection {
   /// Retrieves a snapshot of the tasks connected to an ACNET node.
 
   Future<List<TaskInfo>> getTasks({String node}) async {
-    final result = await this.rpc(
+    final result = await this.requestReply(
         task: "ACNET@" + node,
         data: Uint8List.fromList(const [4, 3]),
         timeout: 500);
