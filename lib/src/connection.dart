@@ -85,7 +85,7 @@ class Connection {
   // unresolved Future. This way, if a task immediate awaits on `nextState`,
   // they'll block.
   void _postNewState(AcnetState s) {
-    _currentState = s;
+    this._currentState = s;
     this._stateStream.add(s);
   }
 
@@ -115,7 +115,7 @@ class Connection {
 
           // Subscribe to events of the WebSocket.
 
-          _sub = ws.listen(this._onData,
+          this._sub = ws.listen(this._onData,
               onError: this._onError, onDone: this._onDone);
 
           const reqConPkt = const [
@@ -142,20 +142,20 @@ class Connection {
           // Send the CONNECT command to ACNET. The `_xact` method
           // returns a Future with the ACK status from ACNET.
 
-          final List<int> ack = await _xact(ws, reqConPkt);
+          final List<int> ack = await this._xact(ws, reqConPkt);
           final bd = ByteData.view((ack as Uint8List).buffer, 4);
           final h = bd.getUint32(5);
 
           // Before updating the context, we notify listeners of
           // our state events that we just connected.
 
-          _postNewState(AcnetState.Connected);
+          this._postNewState(AcnetState.Connected);
           return _Context(h, ws);
         } catch (error) {
           // Some sort of error occurred. Notify subscribers we are in a
           // disconnected state.
 
-          _postNewState(AcnetState.Disconnected);
+          this._postNewState(AcnetState.Disconnected);
           await Future.delayed(Duration(seconds: 5));
         }
       }
@@ -179,7 +179,7 @@ class Connection {
     var tmp = this._requests;
 
     this._reset(Duration(seconds: 5));
-    tmp.forEach((e) => e.complete(_NACK_DISCONNECT));
+    tmp.forEach((e) => e.complete(Connection._NACK_DISCONNECT));
   }
 
   void _onError(error) {
@@ -243,7 +243,7 @@ class Connection {
   }
 
   Future _cancel(int reqId) async {
-    final _Context ctxt = await _ctxt;
+    final _Context ctxt = await this._ctxt;
     final pkt = Uint8List(14);
 
     {
@@ -254,7 +254,7 @@ class Connection {
       bd.setUint16(12, reqId);
     }
 
-    _xact(ctxt._socket, pkt);
+    this._xact(ctxt._socket, pkt);
   }
 
   /// Converts an ACNET node name into an address by querying the node table
@@ -420,7 +420,7 @@ class Connection {
 
             this._rpyMap[reqId] = (rpy, last) {
               if (last) {
-                _rpyMap.remove(reqId);
+                this._rpyMap.remove(reqId);
               }
               c.complete(rpy);
             };
@@ -481,10 +481,10 @@ class Connection {
               _cancel(reqId);
             });
 
-            _rpyMap[reqId] = (rpy, last) async {
+            this._rpyMap[reqId] = (rpy, last) async {
               c.add(rpy);
               if (last) {
-                _rpyMap.remove(reqId);
+                this._rpyMap.remove(reqId);
                 await c.close();
               }
             };
