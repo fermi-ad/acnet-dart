@@ -421,4 +421,68 @@ class Connection {
       return Reply(0, status, Uint8List(0));
     }
   }
+
+  /// Sends an ACNET request to a remote task for a stream of replies. [task]
+  /// is the address of the remote task. It takes the for "TASK@NODE". [data]
+  /// is a binary packet of data to send. [timeout] indicates, in milliseconds,
+  /// how long we should wait between each reply before an ACNET_UTIME error
+  /// status is returned.
+  ///
+  /// The [timeout] parameter should always be preferred rather than pairing
+  /// the returned Future with a timeout Future. This is because ACNET requests
+  /// always have a timeout associated with them and it complicates the code
+  /// as to whether an ACNET timeout occurred or whether a local timeout
+  /// expired and the Futures were canceled. Letting ACNET do the timeout
+  /// allows resources to be properly cleaned up.
+  Future<Stream<Reply<List<int>>>> requestReplyStream(
+      {String task, List<int> data, int timeout = 1000}) async {
+    try {
+      final p = await _parseAddress(task);
+      final buf = Uint8List(24 + data.length);
+      final ctxt = await this._ctxt;
+
+      {
+        final bd = ByteData.view(buf.buffer);
+
+        bd.setUint32(0, 0x00010012);
+        bd.setUint32(4, ctxt._handle);
+        bd.setUint32(12, p.item1);
+        bd.setUint16(16, p.item2);
+        bd.setUint16(18, 1);
+        bd.setUint32(20, timeout);
+      }
+      buf.setAll(24, data);
+
+      final ack = await this._xact(ctxt._socket, buf);
+
+      if (ack.length >= 6) {
+        final bd = ByteData.view((ack as Uint8List).buffer, 2);
+        final status = Status.fromRaw(bd.getInt16(4));
+
+        if (bd.getUint16(2) == 2 && status.isGood) {
+          if (ack.length >= 8) {
+            final reqId = bd.getUint16(6);
+            final c = StreamController<Reply<List<int>>>(onCancel: () {
+              _cancel(reqId);
+            });
+
+            _rpyMap[reqId] = (rpy, last) async {
+              c.add(rpy);
+              if (last) {
+                _rpyMap.remove(reqId);
+                await c.close();
+              }
+            };
+            return c.stream;
+          } else
+            throw ACNET_BUG;
+        } else
+          throw status;
+      } else
+        throw ACNET_BUG;
+    } catch (status) {
+      print("exception: $status");
+      return Stream.value(Reply(0, status, Uint8List(0)));
+    }
+  }
 }
