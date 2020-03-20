@@ -220,15 +220,14 @@ class Connection {
 
         // If the was an entry for the request, handle it.
 
-        if (entry != null)
+        if (entry != null) {
           entry(Reply(tn, status, Uint8List.view(bd.buffer, 20)),
               bd.getUint16(0, Endian.little) == 4);
-        else
-          print("bad request ID: $reqId");
-      } else
-        print("received bad packet (shorter than ACNET header): $pkt");
-    } else
-      print("received bad packet: $pkt");
+          return;
+        }
+      }
+    }
+    print("🐞");
   }
 
   // Perform a transaction with acnetd. This requires a command packet
@@ -432,7 +431,6 @@ class Connection {
       } else
         throw ACNET_BUG;
     } catch (status) {
-      print("exception: $status");
       return Reply(0, status, Uint8List(0));
     }
   }
@@ -496,7 +494,6 @@ class Connection {
       } else
         throw ACNET_BUG;
     } catch (status) {
-      print("exception: $status");
       return Stream.value(Reply(0, status, Uint8List(0)));
     }
   }
