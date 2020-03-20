@@ -44,7 +44,7 @@ class Reply<T> {
   Reply<R> map<R>(R f(T)) => Reply(this.sender, this.status, f(this.message));
 }
 
-typedef ReplyHandler(Reply<List<int>> reply);
+typedef ReplyHandler(Reply<List<int>> reply, bool last);
 
 /// Manages an ACNET connection. If the connection to the control system
 /// breaks, attempts will be made to reconnect. While the connection is
@@ -220,14 +220,10 @@ class Connection {
 
         // If the was an entry for the request, handle it.
 
-        if (entry != null) {
-          // If the "MULT" bit is clear, then this is the last reply for the
-          // request. Remove it from the map. (If the 'flags' field is 5, it's
-          // a reply with more to follow, a 4 means it's the last reply.)
-
-          if (bd.getUint16(0, Endian.little) == 4) this._rpyMap.remove(reqId);
-          entry(Reply(tn, status, Uint8List.view(bd.buffer, 20)));
-        } else
+        if (entry != null)
+          entry(Reply(tn, status, Uint8List.view(bd.buffer, 20)),
+              bd.getUint16(0, Endian.little) == 4);
+        else
           print("bad request ID: $reqId");
       } else
         print("received bad packet (shorter than ACNET header): $pkt");
@@ -407,7 +403,12 @@ class Connection {
             final reqId = bd.getUint16(6);
             final c = Completer<Reply<List<int>>>();
 
-            this._rpyMap[reqId] = c.complete;
+            this._rpyMap[reqId] = (rpy, last) {
+              if (last) {
+                _rpyMap.remove(reqId);
+              }
+              c.complete(rpy);
+            };
             return c.future;
           } else
             throw ACNET_BUG;
