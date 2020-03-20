@@ -21,8 +21,14 @@ class TaskInfo {
   }
 }
 
+/// Adds methods to the [Connection] class to provide "Level-II" diagnostics.
+/// These are methods that retrieve internal information from an ACNET node
+/// or perform diagnostic functions (like "ping"ing an ACNET node.) Normal
+/// ACNET applications don't require these utilities.
+
 extension LevelII on Connection {
-  /// Pings the specified ACNET node.
+  /// Pings the specified ACNET node. If this method returns [true], the remote
+  /// node responded.
 
   Future<bool> ping({String node}) async {
     final result = await this.rpc(
@@ -33,8 +39,13 @@ extension LevelII on Connection {
     return result.status.isGood && result.message.length == 2;
   }
 
-  /// Queries the version of the specified ACNET node. The return value is a
-  /// list of 3 strings.
+  /// Queries the versions associated with the specified ACNET node. The return
+  /// value is a list of 3 strings representing the three version numbers used
+  /// to identify aspect of ACNET. The first version represents the version of
+  /// the network layout. ACNET nodes with the same, first version should be
+  /// able to communicate. The second version is associated with internals of
+  /// the local ACNET process/library. The third version represent the local
+  /// API that clients use to communicate with their ACNET process/library.
 
   Future<List<String>> version({String node}) async {
     final result = await this.rpc(
@@ -55,6 +66,8 @@ extension LevelII on Connection {
       throw result.status;
   }
 
+  /// Retrieves a snapshot of the tasks connected to an ACNET node.
+
   Future<List<TaskInfo>> getTasks({String node}) async {
     final result = await this.rpc(
         task: "ACNET@" + node,
@@ -68,9 +81,6 @@ extension LevelII on Connection {
       var l = <TaskInfo>[];
 
       if (bd.buffer.lengthInBytes >= 2 + total * 11) {
-        print(
-            "pkt size: ${bd.buffer.lengthInBytes} bytes, total tasks: $total");
-
         for (var ii = 0; ii < total; ++ii) {
           final offset = 2 + ii * 11;
 

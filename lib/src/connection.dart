@@ -5,8 +5,8 @@ import 'dart:typed_data';
 import 'rad50.dart';
 import 'status.dart';
 
-/// The possible states of the ACNET connection. These are retrieved using
-/// the `Connection.state` and `Connection.nextState` properties.
+/// The possible states of an ACNET connection. These are retrieved using
+/// the `Connection.state` and `Connection.stateStream` properties.
 enum AcnetState { Disconnected, Connected }
 
 class _Context {
@@ -23,9 +23,12 @@ class _Pair<T1, T2> {
   const _Pair(this.item1, this.item2);
 }
 
-/// Replies from ACNET take the following format. In low-level communications
-/// (i.e. when a library hasn't been written for the service) the type of the
-/// message will simply be `List<int>`.
+/// A structure that holds reply information from ACNET. The [sender] field
+/// holds the trunk/node address from where the reply was sent. The [status]
+/// field holds an ACNET status value associated with the reply. The [message]
+/// field holds the actual reply data. In low-level communications (i.e. when
+/// a library hasn't been written for the service) the type of [message] will
+/// simply be `List<int>`.
 class Reply<T> {
   final int sender;
   final Status status;
@@ -35,6 +38,9 @@ class Reply<T> {
 
   String toString() => "Reply(${this.sender}, ${this.status}, ${this.message})";
 
+  /// Maps the reply to hold a different type by calling a mapping function.
+  /// With the proper mapping functions, this method can be used to serialize
+  /// data types to and from List<int> (used by the low-level ACNET methods.)
   Reply<R> map<R>(R f(T)) => Reply(this.sender, this.status, f(this.message));
 }
 
@@ -51,15 +57,16 @@ class Connection {
   StreamSubscription<dynamic> _sub; // ignore: cancel_subscriptions
   Map<int, ReplyHandler> _rpyMap = {};
 
-  // 'nack_disconnect' is a packet that is returned when we lose connection
+  // 'NACK_DISCONNECT' is a packet that is returned when we lose connection
   // with ACNET. It has one layout, so we can define it once and use it
   // everywhere it can be returned.
 
   static final Uint8List _NACK_DISCONNECT = Uint8List.fromList([0, 0, 0xde, 1]);
 
   /// Allows an application to query the current state of the ACNET connection.
-  /// This state is volatile in that, right after reading the state is
-  /// "Connected", the ACNET connection could end.
+  /// This state is volatile in that, right after reading the state, the
+  /// connection could change to a new state. To properly track state changes,
+  /// you should use the [stateStream] property.
   AcnetState get state => this._currentState;
 
   /// Returns a Stream<State> so applications can subscribe and be notified when
@@ -77,7 +84,6 @@ class Connection {
   // temporary so that the completer in the object will always have an
   // unresolved Future. This way, if a task immediate awaits on `nextState`,
   // they'll block.
-
   void _postNewState(AcnetState s) {
     _currentState = s;
     this._stateStream.add(s);
@@ -96,8 +102,9 @@ class Connection {
     this._sub = null;
 
     // Prepare a new context. `Future.delayed` returns a Future that resolves
-    // after a timeout. When constructing, the timeout is 0 seconds. Future
-    // restarts (when trying to reconnect) we wait 5 seconds.
+    // after a timeout. When constructing a new Connection, the timeout is 0
+    // seconds. When trying to reconnect, the timeout is typically set to 5
+    // seconds.
 
     this._ctxt = Future.delayed(d, () async {
       while (true) {
@@ -105,6 +112,8 @@ class Connection {
           final ws = await WebSocket.connect(wsUrl.toString(),
               protocols: ['acnet-client'],
               compression: CompressionOptions(enabled: false));
+
+          // Subscribe to events of the WebSocket.
 
           _sub = ws.listen(this._onData,
               onError: this._onError, onDone: this._onDone);
@@ -131,9 +140,7 @@ class Connection {
           ];
 
           // Send the CONNECT command to ACNET. The `_xact` method
-          // returns a Future with the ACK status from ACNET. We
-          // feed this result into a `then` which builds the _Context
-          // that resolves the outermost Future.
+          // returns a Future with the ACK status from ACNET.
 
           final List<int> ack = await _xact(ws, reqConPkt);
           final bd = ByteData.view((ack as Uint8List).buffer, 4);
@@ -145,6 +152,9 @@ class Connection {
           _postNewState(AcnetState.Connected);
           return _Context(h, ws);
         } catch (error) {
+          // Some sort of error occurred. Notify subscribers we are in a
+          // disconnected state.
+
           _postNewState(AcnetState.Disconnected);
           await Future.delayed(Duration(seconds: 5));
         }
@@ -155,6 +165,8 @@ class Connection {
     this._postNewState(AcnetState.Disconnected);
   }
 
+  /// Creates a new connection to ACNET. This only allows a client to connect
+  /// anonymously (so `acnetd` will provide the handle name.)
   Connection() {
     this._reset(Duration(seconds: 0));
   }
@@ -234,7 +246,8 @@ class Connection {
     return c.future;
   }
 
-  /// Helper method to convert an ACNET node name into an address.
+  /// Converts an ACNET node name into an address by querying the node table
+  /// of the local `acnetd` instance.
   Future<int> getNodeAddress(String name) async {
     if (name == "LOCAL") return 0;
 
@@ -266,7 +279,8 @@ class Connection {
       throw ACNET_BUG;
   }
 
-  /// Helper method to convert an ACNET trunk/node into a name.
+  /// Converts an ACNET trunk/node into a name by querying the node table of
+  /// the local `acnetd` instance.
   Future<String> getNodeName(int addr) async {
     if (addr == 0) return "LOCAL";
 
@@ -298,7 +312,11 @@ class Connection {
       throw ACNET_BUG;
   }
 
-  /// Helper method to get the local node name.
+  /// Get the local node name. ACNET clients don't necessarily know the ACNET
+  /// node on which they're running. If a client needed this information, this
+  /// method asks `acnetd` for the node. This method can be useful on a system
+  /// that provides several ACNET node (i.e. "virtual nodes"). This method
+  /// would which node, of a set of virtual nodes, the client is using.
   Future<String> getLocalNode() async {
     final _Context ctxt = await this._ctxt;
     final pkt = Uint8List(12);
@@ -347,6 +365,18 @@ class Connection {
     }
   }
 
+  /// Sends an ACNET request to a remote task which will only receive one
+  /// reply. [task] is the address of the remote task. It takes the form
+  /// "TASK@NODE". [data] is a binary packet of data to send. [timeout]
+  /// indicates, in milliseconds, how long we should wait for a reply before
+  /// an ACNET_UTIME error status is returned.
+  ///
+  /// The [timeout] parameter should always be preferred rather than pairing
+  /// the returned Future with a timeout Future. This is because ACNET requests
+  /// always have a timeout associated with them and it complicates the code
+  /// as to whether an ACNET timeout occurred or whether a local timeout
+  /// expired and the Futures were canceled. Letting ACNET do the timeout
+  /// allows resources to be properly cleaned up.
   Future<Reply<List<int>>> rpc(
       {String task, List<int> data, int timeout = 1000}) async {
     try {
