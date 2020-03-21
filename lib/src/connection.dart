@@ -475,8 +475,9 @@ class Connection {
         if (bd.getUint16(2) == 2 && status.isGood) {
           if (ack.length >= 8) {
             final reqId = bd.getUint16(6);
-            final c = StreamController<Reply<List<int>>>(onCancel: () {
-              _cancel(reqId);
+            final c = StreamController<Reply<List<int>>>(onCancel: () async {
+              this._rpyMap.remove(reqId);
+              return this._cancel(reqId);
             });
 
             this._rpyMap[reqId] = (rpy, last) async {
