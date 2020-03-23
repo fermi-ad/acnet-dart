@@ -29,7 +29,6 @@ class TaskInfo {
 extension LevelII on Connection {
   /// Pings the specified ACNET node. If this method returns [true], the remote
   /// node responded.
-
   Future<bool> ping({String node}) async {
     final result = await this.requestReply(
         task: "ACNET@" + node,
@@ -39,14 +38,15 @@ extension LevelII on Connection {
     return result.status.isGood && result.message.length == 2;
   }
 
-  /// Queries the versions associated with the specified ACNET node. The return
-  /// value is a list of 3 strings representing the three version numbers used
-  /// to identify aspect of ACNET. The first version represents the version of
-  /// the network layout. ACNET nodes with the same, first version should be
-  /// able to communicate. The second version is associated with internals of
-  /// the local ACNET process/library. The third version represent the local
-  /// API that clients use to communicate with their ACNET process/library.
-
+  /// Get the versions associated with the specified ACNET node.
+  ///
+  /// The return value is a list of 3 strings representing the three version
+  /// numbers used to identify aspect of ACNET. The first version represents
+  /// the version of the network layout. ACNET nodes with the same, first
+  /// version should be able to communicate. The second version is associated
+  /// with internals of the local ACNET process/library. The third version
+  /// represent the local API that clients use to communicate with their ACNET
+  /// process/library.
   Future<List<String>> version({String node}) async {
     final result = await this.requestReply(
         task: "ACNET@" + node,
