@@ -69,6 +69,9 @@ class Connection {
   StreamSubscription<dynamic> _sub; // ignore: cancel_subscriptions
   Map<int, ReplyHandler> _rpyMap = {};
 
+  /// Returns the version of the library.
+  static String version() => "v0.6";
+
   // 'NACK_DISCONNECT' is a packet that is returned when we lose connection
   // with ACNET. It has one layout, so we can define it once and use it
   // everywhere it can be returned.
