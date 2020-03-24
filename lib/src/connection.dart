@@ -132,8 +132,9 @@ class Connection {
       while (true) {
         try {
           final ws = await WebSocket.connect(wsUrl.toString(),
-              protocols: ['acnet-client'],
-              compression: CompressionOptions(enabled: false));
+                  protocols: ['acnet-client'],
+                  compression: CompressionOptions(enabled: false))
+              .timeout(Duration(seconds: 2));
 
           // Subscribe to events of the WebSocket.
 
