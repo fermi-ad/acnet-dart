@@ -24,10 +24,10 @@ void main() async {
     } else
       print("$node did not answer.");
 
-    final tasks = await c.getTasks(node: node);
+    final Map<int, TaskInfo> tasks = await c.getTasks(node: node);
 
-    for (var ii in tasks)
-      print(ii.toString());
+    for (var k in tasks.keys)
+      print(tasks[k].toString());
   }
   catch (e) {
     print("Caught exception: $e");
