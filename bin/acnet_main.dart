@@ -18,7 +18,7 @@ void main() async {
     final answering = await c.ping(node: node);
 
     if (answering) {
-      final v = await c.version(node: node);
+      final v = await c.getVersions(node: node);
 
       print("${v[0]}, ${v[1]}, ${v[2]}");
     } else

@@ -47,7 +47,7 @@ extension LevelII on Connection {
   /// with internals of the local ACNET process/library. The third version
   /// represent the local API that clients use to communicate with their ACNET
   /// process/library.
-  Future<List<String>> version({String node}) async {
+  Future<List<String>> getVersions({String node}) async {
     final result = await this.requestReply(
         task: "ACNET@" + node,
         data: Uint8List.fromList(const [3, 0]),
