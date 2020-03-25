@@ -230,6 +230,7 @@ class Connection {
 
         this._requests.first.complete(pkt);
         this._requests.removeAt(0);
+        return;
       }
 
       // We assume the packet contains data from an ACNET network frame.
@@ -248,11 +249,10 @@ class Connection {
 
         // If the was an entry for the request, handle it.
 
-        if (entry != null) {
+        if (entry != null)
           entry(Reply(tn, status, Uint8List.view(bd.buffer, 20)),
               bd.getUint16(0, Endian.little) == 4);
-          return;
-        }
+        return;
       }
     }
     print("🐞");
