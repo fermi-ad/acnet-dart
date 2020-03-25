@@ -105,6 +105,41 @@ extension Level2 on Connection {
       throw result.status;
   }
 
+  // Historically, ACNET only supported 127 tasks connected per node. The
+  // request for this info only allocated an 8-bit field to hold it. When we
+  // expanded the number, in `acnetd`, a new Level2 request was created. Both
+  // requests return the same reply but all non-acnetd nodes still only support
+  // the old request. This function looks to see which request should be built
+  // based on the value of the taskId. This should work because only
+  // acnetd-hosted clients will generate a task ID greater than 255.
+  static Uint8List bldTaskNameReq(int taskId) {
+    if (taskId < 256)
+      return Uint8List.fromList([2, taskId]);
+    else
+      return Uint8List.fromList([18, 0, taskId ~/ 256, taskId % 256]);
+  }
+
+  /// Returns the task name of a remote task with the given ID.
+  Future<String> getTaskName({int taskId, String node}) async {
+    final result = await this.requestReply(
+        task: "ACNET@" + node,
+        data: Level2.bldTaskNameReq(taskId),
+        timeout: 500);
+
+    if (result.status.isGood) {
+      final v = Uint8List.fromList(result.message);
+      final bd = ByteData.view(v.buffer);
+
+      // Result is simply a 16-bit value.
+
+      if (bd.lengthInBytes == 4)
+        return toString(bd.getUint32(0, Endian.little));
+      else
+        throw ACNET_TRUNC_REPLY;
+    } else
+      throw result.status;
+  }
+
   /// Get the versions associated with the specified ACNET node.
   ///
   /// The return value is a list of 3 strings representing the three version
