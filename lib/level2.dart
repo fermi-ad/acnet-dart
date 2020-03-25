@@ -26,7 +26,7 @@ class TaskInfo {
 /// or perform diagnostic functions (like "ping"ing an ACNET node.) Normal
 /// ACNET applications don't require these utilities.
 
-extension LevelII on Connection {
+extension Level2 on Connection {
   /// Pings the specified ACNET node. If this method returns [true], the remote
   /// node responded.
   Future<bool> ping({String node}) async {
