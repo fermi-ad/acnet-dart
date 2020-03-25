@@ -105,6 +105,21 @@ class Connection {
     return toString(ctxt._handle);
   }
 
+  /// Shuts down the connection.
+  ///
+  /// Once this method completes, the connection is no longer valid and a new
+  /// instance of the class needs to be used to connect to ACNET. This method
+  /// is mostly used by Flutter widgets so they can free up resources when they
+  /// are removed from the widget tree.
+  void close() async {
+    if (this._currentState == AcnetState.Connected) {
+      this._sub?.cancel();
+      this._sub = null;
+      (await this._ctxt)._socket.close();
+      this._postNewState(AcnetState.Disconnected);
+    }
+  }
+
   // Posts a new connection state event. We save the completer to a local
   // temporary so that the completer in the object will always have an
   // unresolved Future. This way, if a task immediate awaits on `nextState`,
