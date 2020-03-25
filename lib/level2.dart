@@ -38,7 +38,7 @@ class TaskInfo {
 extension Level2 on Connection {
 
   /// Retrieves a snapshot of the tasks connected to an ACNET node.
-  Future<Map<int, TaskInfo>> getTasks({String node}) async {
+  Future<Map<int, TaskInfo>> getTaskInfo({String node}) async {
     final result = await this.requestReply(
         task: "ACNET@" + node,
         data: Uint8List.fromList(const [4, 3]),
