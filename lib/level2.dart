@@ -37,6 +37,43 @@ class TaskInfo {
 
 extension Level2 on Connection {
 
+  /// Returns the task ID of a remote task.
+  Future<int> getTaskId({String task, String node}) async {
+
+    // Request format for task ID info:
+    //
+    // +----+----+
+    // | 01 | 00 |
+    // +----+----+----+----+
+    // | 32-bit RAD50 name |
+    // +----+----+----+----+
+
+    final pkt = Uint8List.fromList([1, 0, 0, 0, 0, 0]);
+    {
+      final bd = ByteData.view(pkt.buffer);
+
+      bd.setUint32(2, toRad50(task), Endian.little);
+    }
+
+    final result = await this.requestReply(
+        task: "ACNET@" + node,
+        data: pkt,
+        timeout: 200);
+
+    if (result.status.isGood) {
+      final v = Uint8List.fromList(result.message);
+      final bd = ByteData.view(v.buffer);
+
+      // Result is simply a 16-bit value.
+
+      if (bd.lengthInBytes == 2)
+        return bd.getUint16(0, Endian.little);
+      else
+        throw ACNET_TRUNC_REPLY;
+    } else
+      throw result.status;
+  }
+
   /// Retrieves a snapshot of the tasks connected to an ACNET node.
   Future<Map<int, TaskInfo>> getTaskInfo({String node}) async {
     final result = await this.requestReply(
