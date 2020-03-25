@@ -1,3 +1,5 @@
+/// Extension module for the [Connection] class to provide Level-II diagnostics.
+
 import 'dart:collection';
 import 'dart:typed_data';
 import 'src/rad50.dart';
@@ -24,7 +26,14 @@ class TaskInfo {
 /// Adds methods to the [Connection] class to provide "Level-II" diagnostics.
 /// These are methods that retrieve internal information from an ACNET node
 /// or perform diagnostic functions (like "ping"ing an ACNET node.) Normal
-/// ACNET applications don't require these utilities.
+///
+/// If your application needs these methods, you don't have to import both the
+/// ACNET and Level-2 modules. The Level-2 extension will pull in the ACNET
+/// module for you:
+///
+/// ```
+/// import 'package:acnet/level2.dart';
+/// ```
 
 extension Level2 on Connection {
   /// Pings the specified ACNET node. If this method returns [true], the remote
