@@ -21,13 +21,21 @@ void main() async {
       final v = await c.getVersions(node: node);
 
       print("${v[0]}, ${v[1]}, ${v[2]}");
+
+      final id = await c.getTaskId(task: "ACNET", node: "CLX73");
+
+      print("got id: $id");
+
+      final name = await c.getTaskName(taskId: id, node: "CLX73");
+
+      print("Look-up ACNET: id = $id, name = $name");
+
+      final Map<int, TaskInfo> tasks = await c.getTaskInfo(node: node);
+
+      for (var k in tasks.keys)
+        print(tasks[k].toString());
     } else
       print("$node did not answer.");
-
-    final Map<int, TaskInfo> tasks = await c.getTasks(node: node);
-
-    for (var k in tasks.keys)
-      print(tasks[k].toString());
   }
   catch (e) {
     print("Caught exception: $e");
