@@ -7,7 +7,7 @@ void main() async {
     final h = await c.handle;
     final ln = await c.getLocalNode();
 
-    print("Handle '$h' on local node '$ln'");
+    print("Handle: '$h', on local node '$ln'");
 
     {
       final tn = await c.getNodeAddress("CLX73");
@@ -27,7 +27,11 @@ void main() async {
       final name = await c.getTaskName(taskId: id, node: ln);
       final ip = await c.getTaskIp(taskId: id, node: ln);
 
-      print("Look-up ACNET: id = $id, name = $name, ip = $ip");
+      print("Look-up ACNET: id = $id, name = $name, "
+          "ip = ${ip ~/ 0x1000000}."
+          "${(ip ~/ 0x10000) % 256}."
+          "${(ip ~/ 0x100) % 256}."
+          "${ip % 256}");
 
       final Map<int, TaskInfo> tasks = await c.getTaskInfo(node: ln);
 
