@@ -63,7 +63,7 @@ typedef ReplyHandler(Reply<List<int>> reply, bool last);
 /// will block.
 class Connection {
   Future<_Context> _ctxt;
-  List<Completer<List<int>>> _requests = [];
+  List<_Pair<Completer<List<int>>, Future>> _requests = [];
   AcnetState _currentState = AcnetState.Connected;
   StreamController<AcnetState> _stateStream = StreamController.broadcast();
   StreamSubscription<dynamic> _sub; // ignore: cancel_subscriptions
@@ -222,7 +222,7 @@ class Connection {
     var tmp = this._requests;
 
     this._reset(Duration(seconds: 5));
-    tmp.forEach((e) => e.complete(Connection._NACK_DISCONNECT));
+    tmp.forEach((e) => e.item1.complete(Connection._NACK_DISCONNECT));
   }
 
   void _onError(error) {
@@ -243,8 +243,16 @@ class Connection {
         // Use the packet to resolve the first Future in the request list
         // and then remove it.
 
-        this._requests.first.complete(pkt);
+        final ack = this._requests.first;
+
         this._requests.removeAt(0);
+
+        // If the command requires network traffic to be paused (to register
+        // the request ID, for instance), pause the subscription.
+
+        if (ack.item2 != null)
+          this._sub.pause(ack.item2);
+        ack.item1.complete(pkt);
         return;
       }
 
@@ -276,11 +284,19 @@ class Connection {
   // Perform a transaction with acnetd. This requires a command packet
   // be sent over the WebSocket, which then returns a reply packet.
 
-  Future<List<int>> _xact(WebSocket s, List<int> pkt) {
+  Future<List<int>> _xact(WebSocket s, List<int> pkt, {Future lock}) {
     Completer<Uint8List> c = Completer();
 
+    // This whole transaction needs to be atomic and stable. The data is
+    // first sent to the socket. If the socket is in a bad state, it will
+    // throw an exception. Since nothing else has been set up, there's no
+    // clean-up to do if this happens.
+    //
+    // If the socket accepts the data, then we register our ACK handler
+    // to the queue and return the future.
+
     s.add(pkt);
-    this._requests.add(c);
+    this._requests.add(_Pair(c, lock));
     return c.future;
   }
 
@@ -459,30 +475,35 @@ class Connection {
       }
       buf.setAll(24, data);
 
-      final ack = await this._xact(ctxt._socket, buf);
+      final Completer comp = Completer();
+      final ack = await this._xact(ctxt._socket, buf, lock: comp.future);
 
-      if (ack.length >= 6) {
-        final bd = ByteData.view((ack as Uint8List).buffer, 2);
-        final status = Status.fromRaw(bd.getInt16(4));
+      try {
+        if (ack.length >= 6) {
+          final bd = ByteData.view((ack as Uint8List).buffer, 2);
+          final status = Status.fromRaw(bd.getInt16(4));
 
-        if (bd.getUint16(2) == 2 && status.isGood) {
-          if (ack.length >= 8) {
-            final reqId = bd.getUint16(6);
-            final c = Completer<Reply<List<int>>>();
+          if (bd.getUint16(2) == 2 && status.isGood) {
+            if (ack.length >= 8) {
+              final reqId = bd.getUint16(6);
+              final c = Completer<Reply<List<int>>>();
 
-            this._rpyMap[reqId] = (rpy, last) {
-              if (last) {
-                this._rpyMap.remove(reqId);
-              }
-              c.complete(rpy);
-            };
-            return c.future;
+              this._rpyMap[reqId] = (rpy, last) {
+                if (last) {
+                  this._rpyMap.remove(reqId);
+                }
+                c.complete(rpy);
+              };
+              return c.future;
+            } else
+              throw ACNET_BUG;
           } else
-            throw ACNET_BUG;
+            throw status;
         } else
-          throw status;
-      } else
-        throw ACNET_BUG;
+          throw ACNET_BUG;
+      } finally {
+        comp.complete(null);
+      }
     } catch (status) {
       return Reply(0, status, Uint8List(0));
     }
@@ -517,34 +538,39 @@ class Connection {
       }
       buf.setAll(24, data);
 
-      final ack = await this._xact(ctxt._socket, buf);
+      final Completer comp = Completer();
+      final ack = await this._xact(ctxt._socket, buf, lock: comp.future);
 
-      if (ack.length >= 6) {
-        final bd = ByteData.view((ack as Uint8List).buffer, 2);
-        final status = Status.fromRaw(bd.getInt16(4));
+      try {
+        if (ack.length >= 6) {
+          final bd = ByteData.view((ack as Uint8List).buffer, 2);
+          final status = Status.fromRaw(bd.getInt16(4));
 
-        if (bd.getUint16(2) == 2 && status.isGood) {
-          if (ack.length >= 8) {
-            final reqId = bd.getUint16(6);
-            final c = StreamController<Reply<List<int>>>(onCancel: () async {
-              this._rpyMap.remove(reqId);
-              return this._cancel(reqId);
-            });
-
-            this._rpyMap[reqId] = (rpy, last) async {
-              c.add(rpy);
-              if (last) {
+          if (bd.getUint16(2) == 2 && status.isGood) {
+            if (ack.length >= 8) {
+              final reqId = bd.getUint16(6);
+              final c = StreamController<Reply<List<int>>>(onCancel: () async {
                 this._rpyMap.remove(reqId);
-                await c.close();
-              }
-            };
-            return c.stream;
+                return this._cancel(reqId);
+              });
+
+              this._rpyMap[reqId] = (rpy, last) async {
+                c.add(rpy);
+                if (last) {
+                  this._rpyMap.remove(reqId);
+                  await c.close();
+                }
+              };
+              return c.stream;
+            } else
+              throw ACNET_BUG;
           } else
-            throw ACNET_BUG;
+            throw status;
         } else
-          throw status;
-      } else
-        throw ACNET_BUG;
+          throw ACNET_BUG;
+      } finally {
+        comp.complete(null);
+      }
     } catch (status) {
       return Stream.value(Reply(0, status, Uint8List(0)));
     }
