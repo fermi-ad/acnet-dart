@@ -1,9 +1,9 @@
 name: acnet
-version: 0.6.0 # Remember to update .version() in connection.dart!
+version: 0.7.0 # Remember to update .version() in connection.dart!
 description: ACNET communication library
 publish_to: none
 environment:
-  sdk: '>=2.6.0 <3.0.0'
+  sdk: '>=2.7.0 <3.0.0'
 dependencies:
 
 dev_dependencies:
