@@ -9,17 +9,28 @@ import 'src/connection.dart';
 enum TaskType { Client, Server }
 
 class TaskInfo {
-  TaskType type;
-  String handle;
-  int pid;
+  final String handle;
+  final int id;
+  final int elapsed;
+  final int usmXmt;
+  final int usmRcv;
+  final int reqXmt;
+  final int reqRcv;
+  final int rpyXmt;
+  final int rpyRcv;
 
-  TaskInfo(this.type, this.handle, this.pid);
+  const TaskInfo({this.handle, this.id, this.elapsed,
+    this.usmXmt, this.usmRcv, this.reqXmt, this.reqRcv, this.rpyXmt,
+    this.rpyRcv});
 
   @override
   String toString() {
     return "task info: { "
-        "type: ${this.type == TaskType.Client ? "client" : "service"}, "
-        "handle: ${this.handle}, pid: ${this.pid} }";
+        "handle: ${this.handle}, id: ${this.id}, "
+        "elapsed: ${this.elapsed}, "
+        "usmXmt: ${this.usmXmt}, usmRcv: ${this.usmRcv}, "
+        "reqXmt: ${this.reqXmt}, reqRcv: ${this.reqRcv}, "
+        "rpyXmt: ${this.rpyXmt}, rpyRcv: ${this.rpyRcv} }";
   }
 }
 
@@ -77,29 +88,46 @@ extension Level2 on Connection {
       throw result.status;
   }
 
-  /// Retrieves a snapshot of the tasks connected to an ACNET node.
-  Future<Map<int, TaskInfo>> getTaskInfo({String node}) async {
+  /// Retrieves a snapshot of the tasks connected to an ACNET [node].
+  ///
+  /// This returns a map containing information on all the tasks on an
+  /// ACNET node. There are 6 fields holding counts of network packet
+  /// types. For historical reasons, these counters are 16-bits so they
+  /// will saturate at 64K. If the [reset] parameter is true, the counts
+  /// will be reset to zero after returning the current count.
+  ///
+  /// Resetting the counts isn't concurrent-safe; if two apps are constantly
+  /// resetting them, they will both see the effects of each other's requests
+  /// (maybe they'll both see counts that are half of what's really being
+  /// transferred.)
+  Future<Map<int, TaskInfo>> getTaskInfo({String node, bool reset: false}) async {
     final result = await this.requestReply(
         task: "ACNET@" + node,
-        data: Uint8List.fromList(const [4, 3]),
+        data: Uint8List.fromList([7, reset ? 1 : 0]),
         timeout: 500);
 
     if (result.status.isGood) {
       final v = Uint8List.fromList(result.message);
       final bd = ByteData.view(v.buffer);
-      final total = bd.getUint16(0, Endian.little);
-      var m = HashMap<int, TaskInfo>();
 
-      if (bd.buffer.lengthInBytes >= 2 + total * 11) {
+      if (bd.buffer.lengthInBytes >= 8) {
+        final elapsed = 0;
+        final total = (bd.buffer.lengthInBytes - 8) ~/ 18;
+        final m = HashMap<int, TaskInfo>();
+
         for (var ii = 0; ii < total; ++ii) {
-          final offset = 2 + ii * 11;
+          final offset = 8 + ii * 18;
+          final taskId = bd.getUint16(offset, Endian.little);
 
-          m[bd.getUint16(offset, Endian.little)] = TaskInfo(
-              (bd.getUint8(offset + 2) & 1) != 0
-                  ? TaskType.Server
-                  : TaskType.Client,
-              toString(bd.getUint32(offset + 3, Endian.little)),
-              bd.getUint32(offset + 7, Endian.little));
+          m[taskId] =
+              TaskInfo(elapsed: elapsed, id: taskId,
+                  handle: toString(bd.getUint32(offset + 2, Endian.little)),
+                  usmXmt: bd.getUint16(offset + 6, Endian.little),
+                  reqXmt: bd.getUint16(offset + 8, Endian.little),
+                  rpyXmt: bd.getUint16(offset + 10, Endian.little),
+                  usmRcv: bd.getUint16(offset + 12, Endian.little),
+                  reqRcv: bd.getUint16(offset + 14, Endian.little),
+                  rpyRcv: bd.getUint16(offset + 16, Endian.little));
         }
         return m;
       } else
