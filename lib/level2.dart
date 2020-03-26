@@ -38,9 +38,12 @@ class TaskInfo {
 extension Level2 on Connection {
 
   /// Returns the task ID of a remote task.
+  ///
+  /// Asks the ACNET service on [node] for the ID of the named [task]. If
+  /// no task has the requested name, this method throws [ACNET_NO_TASK].
   Future<int> getTaskId({String task, String node}) async {
 
-    // Request format for task ID info:
+    // Request format for task ID info (in hex):
     //
     // +----+----+
     // | 01 | 00 |
@@ -106,8 +109,8 @@ extension Level2 on Connection {
   }
 
   // Historically, ACNET only supported 127 tasks connected per node. The
-  // request for this info only allocated an 8-bit field to hold it. When we
-  // expanded the number, in `acnetd`, a new Level2 request was created. Both
+  // request for this info only reserves an 8-bit field to hold it. When we
+  // expanded the number in `acnetd`, a new Level2 request was created. Both
   // requests return the same reply but all non-acnetd nodes still only support
   // the old request. This function looks to see which request should be built
   // based on the value of the taskId. This should work because only
@@ -120,6 +123,10 @@ extension Level2 on Connection {
   }
 
   /// Returns the task name of a remote task with the given ID.
+  ///
+  /// Asks the ACNET service on [node] for the name of the task with
+  /// ID, [taskId]. If there isn't a task with the requested ID, this
+  /// method throws [ACNET_NO_TASK].
   Future<String> getTaskName({int taskId, String node}) async {
     final result = await this.requestReply(
         task: "ACNET@" + node,
@@ -140,7 +147,7 @@ extension Level2 on Connection {
       throw result.status;
   }
 
-  /// Get the versions associated with the specified ACNET node.
+  /// Get the versions associated with the specified ACNET [node].
   ///
   /// The return value is a list of 3 strings representing the three version
   /// numbers used to identify aspect of ACNET. The first version represents
@@ -168,8 +175,9 @@ extension Level2 on Connection {
       throw result.status;
   }
 
-  /// Pings the specified ACNET node. If this method returns [true], the remote
-  /// node responded.
+  /// Pings the specified ACNET [node].
+  ///
+  /// If this method returns [true], the remote node responded.
   Future<bool> ping({String node}) async {
     final result = await this.requestReply(
         task: "ACNET@" + node,
