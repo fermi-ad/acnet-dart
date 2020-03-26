@@ -108,6 +108,50 @@ extension Level2 on Connection {
       throw result.status;
   }
 
+  /// Gets the IP address for the [task] registered on [node].
+  ///
+  /// Clients usually run on the same node as their ACNET service. For
+  /// those clients, the IP address is the same as if you looked up the
+  /// IP address for the [node]. Newer clients (i.e. web apps, Python
+  /// scripts, Flutter apps) connect to an ACNET service remotely. This
+  /// method returns their actual location.
+  ///
+  /// This method only works for `acnetd`-based nodes. Other ACNET
+  /// implementations cause [ACNET_LEVEL2] to be thrown.
+  Future<int> getTaskIp({int taskId, String node}) async {
+
+    // Request format for task IP info (in hex):
+    //
+    // +----+----+
+    // | 13 | 00 |
+    // +----+----+
+    // | task ID |
+    // +----+----+
+
+    final pkt = Uint8List.fromList([19, 0, 0, 0]);
+    {
+      final bd = ByteData.view(pkt.buffer);
+
+      bd.setUint16(2, taskId, Endian.little);
+    }
+
+    final result = await this.requestReply(
+        task: "ACNET@" + node,
+        data: pkt,
+        timeout: 200);
+
+    if (result.status.isGood) {
+      final v = Uint8List.fromList(result.message);
+      final bd = ByteData.view(v.buffer);
+
+      if (bd.lengthInBytes == 4)
+        return bd.getUint32(0, Endian.little);
+      else
+        throw ACNET_LEVEL2;
+    } else
+      throw result.status;
+  }
+
   // Historically, ACNET only supported 127 tasks connected per node. The
   // request for this info only reserves an 8-bit field to hold it. When we
   // expanded the number in `acnetd`, a new Level2 request was created. Both

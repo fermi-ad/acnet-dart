@@ -9,33 +9,32 @@ void main() async {
 
     print("Handle '$h' on local node '$ln'");
 
-    final tn = await c.getNodeAddress("CLX73");
-    final nm = await c.getNodeName(tn);
+    {
+      final tn = await c.getNodeAddress("CLX73");
+      final nm = await c.getNodeName(tn);
 
-    print("CLX73: tn = $tn, nm = $nm");
+      print("CLX73: tn = $tn, nm = $nm");
+    }
 
-    final node = "CLX39";
-    final answering = await c.ping(node: node);
+    final answering = await c.ping(node: ln);
 
     if (answering) {
-      final v = await c.getVersions(node: node);
+      final v = await c.getVersions(node: ln);
 
       print("${v[0]}, ${v[1]}, ${v[2]}");
 
-      final id = await c.getTaskId(task: "ACNET", node: "CLX73");
+      final id = await c.getTaskId(task: h, node: ln);
+      final name = await c.getTaskName(taskId: id, node: ln);
+      final ip = await c.getTaskIp(taskId: id, node: ln);
 
-      print("got id: $id");
+      print("Look-up ACNET: id = $id, name = $name, ip = $ip");
 
-      final name = await c.getTaskName(taskId: id, node: "CLX73");
-
-      print("Look-up ACNET: id = $id, name = $name");
-
-      final Map<int, TaskInfo> tasks = await c.getTaskInfo(node: node);
+      final Map<int, TaskInfo> tasks = await c.getTaskInfo(node: ln);
 
       for (var k in tasks.keys)
         print(tasks[k].toString());
     } else
-      print("$node did not answer.");
+      print("$ln did not answer.");
   }
   catch (e) {
     print("Caught exception: $e");
